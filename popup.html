@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChatGPT Keyboard Remap</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script src="shared.js" defer></script>
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <main class="popup">
+      <section class="hero">
+        <div class="hero__copy">
+          <h1>ChatGPT Keyboard Remap</h1>
+        </div>
+
+        <label class="toggle" for="enabled-toggle">
+          <span class="toggle__text">Enabled</span>
+          <span class="toggle__control">
+            <input id="enabled-toggle" type="checkbox" />
+            <span class="toggle__track" aria-hidden="true">
+              <span class="toggle__thumb"></span>
+            </span>
+          </span>
+        </label>
+      </section>
+
+      <section class="panel panel--settings">
+        <div class="setting">
+          <div class="setting__header">
+            <div>
+              <h2 class="setting__title">Send message</h2>
+            </div>
+          </div>
+          <div
+            class="shortcut-grid"
+            id="send-shortcuts"
+            role="radiogroup"
+            aria-label="Shortcut used to send a message"
+          ></div>
+        </div>
+
+        <div class="setting">
+          <div class="setting__header">
+            <div>
+              <h2 class="setting__title">Insert newline</h2>
+            </div>
+          </div>
+          <div
+            class="shortcut-grid"
+            id="newline-shortcuts"
+            role="radiogroup"
+            aria-label="Shortcut used to insert a newline"
+          ></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
