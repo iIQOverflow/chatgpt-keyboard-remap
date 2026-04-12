@@ -1,5 +1,8 @@
 # ChatGPT Keyboard Remap
 
+![Popup Screenshot](assets/popup%20screenshot.png)
+
+
 An extension that remaps ChatGPT's composer shortcuts so writing multi-line prompts feels more natural.
 
 By default:

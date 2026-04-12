@@ -27,7 +27,7 @@
 html,
 body {
   margin: 0;
-  min-width: 376px;
+  min-width: 340px;
   background:
     radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 44%),
     linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
@@ -36,28 +36,45 @@ body {
 }
 
 body {
-  padding: 14px;
+  padding: 10px;
 }
 
 .popup {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: 12px;
+  padding: 16px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
+  border-radius: 28px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.84));
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
 
 .hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hero__copy {
   display: grid;
-  gap: 14px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hero__eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hero__copy h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.1;
   letter-spacing: -0.03em;
 }
@@ -73,9 +90,18 @@ body {
   background: var(--panel);
 }
 
+.toggle--compact {
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex: 0 0 auto;
+}
+
 .toggle__text {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 650;
+  color: var(--muted);
 }
 
 .toggle__control {
@@ -93,8 +119,8 @@ body {
 
 .toggle__track {
   position: relative;
-  width: 48px;
-  height: 28px;
+  width: 46px;
+  height: 27px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.42);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
@@ -105,8 +131,8 @@ body {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
@@ -120,7 +146,7 @@ body {
 }
 
 .toggle__control input:checked + .toggle__track .toggle__thumb {
-  transform: translateX(20px);
+  transform: translateX(19px);
 }
 
 .toggle__control input:focus-visible + .toggle__track {
@@ -129,7 +155,7 @@ body {
 }
 
 .panel {
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--panel);
@@ -137,7 +163,7 @@ body {
 
 .panel--settings {
   display: grid;
-  gap: 18px;
+  gap: 0;
 }
 
 .panel__label,
@@ -148,7 +174,13 @@ body {
 
 .setting {
   display: grid;
-  gap: 12px;
+  gap: 10px;
+}
+
+.setting + .setting {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .setting__header {
@@ -159,14 +191,14 @@ body {
 }
 
 .setting__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .shortcut-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
 }
 
 .shortcut-button {
@@ -214,8 +246,8 @@ body {
 .repo-link {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.88);
@@ -244,8 +276,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 14px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.03));
   color: var(--text);
@@ -253,8 +285,8 @@ body {
 }
 
 .repo-link__icon svg {
-  width: 23px;
-  height: 23px;
+  width: 21px;
+  height: 21px;
   fill: currentColor;
 }
 
@@ -265,21 +297,21 @@ body {
 }
 
 .repo-link__title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .repo-link__description {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
 .repo-link__arrow {
   margin-left: auto;
   color: var(--muted);
-  font-size: 26px;
+  font-size: 24px;
   line-height: 1;
   flex: 0 0 auto;
 }
