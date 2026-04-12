@@ -1,125 +1,98 @@
 # ChatGPT Keyboard Remap
 
-ChatGPT Keyboard Remap is a lightweight Manifest V3 Chrome extension that changes ChatGPT's composer shortcuts so `Enter` inserts a newline and `Ctrl+Enter` on Windows/Linux or `Command+Enter` on macOS sends the message by default.
+An extension that remaps ChatGPT's composer shortcuts so writing multi-line prompts feels more natural.
 
-It runs directly on:
+By default:
 
-- `https://chatgpt.com/*`
-- `https://chat.openai.com/*`
+- `Enter` inserts a newline
+- `Ctrl+Enter` sends on Windows/Linux
+- `Command+Enter` sends on macOS
 
-No framework, build step, or external dependency is required.
+This extension adds a lightweight popup settings panel, stores preferences with `chrome.storage.sync`, applies changes without a page reload when possible, and handles IME composition safely for Chinese, Japanese, and Korean input.
 
-## Features
+---
 
-- IME-safe keyboard remapping for the ChatGPT composer
-- Default behavior:
-  - `Enter` inserts a newline
-  - `Ctrl+Enter` sends on Windows/Linux
-  - `Command+Enter` sends on macOS
-- Popup settings UI for:
-  - enabling or disabling the extension
-  - choosing the send shortcut
-  - choosing the newline shortcut
-- Immediate updates through `chrome.storage.sync`
-- Shortcut conflict prevention in the popup
-- Unconfigured supported `Enter` shortcuts keep ChatGPT's native behavior
-- Graceful failure when the ChatGPT DOM changes
+## ✨ Features
 
-## Supported shortcuts
+- **Natural Composer Behavior**: Remap ChatGPT so `Enter` inserts a newline and a modifier shortcut sends the message.
+- **Configurable Shortcuts**: Choose the send shortcut and newline shortcut from a practical set of supported `Enter` combinations.
+- **Platform-Aware Defaults**: Uses `Command+Enter` by default on macOS and `Ctrl+Enter` by default on Windows/Linux.
+- **Polished Popup UI**: Includes a clean settings popup with a toggle and compact shortcut selectors.
+- **Lightweight Implementation**: Built with plain HTML, CSS, and JavaScript. No framework or build step required.
+- **Low Runtime Overhead**: No polling, no MutationObserver loop, and no continuous DOM scanning.
+- **IME-Safe Handling**: Avoids interfering while input composition is active.
+- **Immediate Updates**: Settings are stored in `chrome.storage.sync` and applied to open ChatGPT tabs without requiring a full restart.
+- **Native Fallback Behavior**: Only the configured send shortcut and configured newline shortcut are remapped. Other supported shortcuts keep ChatGPT's original behavior.
 
-The popup offers a compact, practical set of shortcuts.
+---
 
-On macOS:
+## How to Install (Chrome / Edge)
+
+### ✅ Manual Installation
+
+1. Download or clone this repository.
+2. Open your browser and go to: `chrome://extensions/`
+3. Enable **Developer mode**.
+4. Click **Load unpacked**.
+5. Select this project folder: `chatgpt-keyboard-remap`
+
+> After installation, open `https://chatgpt.com/` or `https://chat.openai.com/`, click the extension icon, and adjust the shortcuts if needed.
+
+---
+
+## Supported Shortcuts
+
+### macOS
 
 - `Enter`
 - `Shift+Enter`
 - `Command+Enter`
 - `Control+Enter`
 
-On Windows/Linux:
+### Windows / Linux
 
 - `Enter`
 - `Shift+Enter`
 - `Ctrl+Enter`
 
-## Repository structure
+---
 
-```text
-chatgpt-keyboard-remap/
-├── .gitignore
-├── LICENSE
-├── README.md
-├── jsconfig.json
-├── assets/
-│   └── icons/
-│       ├── icon-16.png
-│       ├── icon-32.png
-│       ├── icon-48.png
-│       ├── icon-128.png
-│       └── icon.svg
-├── content.js
-├── manifest.json
-├── popup.css
-├── popup.html
-├── popup.js
-├── shared.js
-└── types/
-    └── chrome-extension.d.ts
-```
+## How It Works
 
-## How to load the unpacked extension
+- `manifest.json` registers the popup and injects the content script on ChatGPT pages.
+- `shared.js` contains the shared settings model, platform detection, shortcut matching logic, and storage helpers.
+- `content.js` watches the real ChatGPT composer, remaps only the configured shortcuts, and clicks ChatGPT's native send button when sending.
+- The content script keeps runtime work small by caching the active composer and only doing extra DOM queries when `Enter` is pressed inside the prompt.
+- `popup.html`, `popup.css`, and `popup.js` provide the settings UI and persist values with `chrome.storage.sync`.
 
-1. Open Chrome and go to `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Click **Load unpacked**.
-4. Select the `chatgpt-keyboard-remap` folder.
-5. Pin the extension if you want quick access to the popup.
+For newline insertion, the extension first tries to follow ChatGPT's native `Shift+Enter` behavior, then falls back to direct editable updates only when necessary.
 
-## How it works
+---
 
-### Architecture
+## Known Limitations
 
-- `manifest.json` registers the popup UI and injects the content script on ChatGPT pages.
-- `shared.js` contains the small shared settings model, defaults, platform detection, and shortcut matching helpers used by both the popup and the content script.
-- `content.js` listens for `keydown` events in the capture phase, detects the active ChatGPT composer, and either inserts a newline or clicks the native send button.
-- For newline insertion, the content script first replays ChatGPT's native `Shift+Enter` path and only falls back to direct DOM insertion if needed.
-- `popup.html`, `popup.css`, and `popup.js` provide a polished settings panel that stores preferences in `chrome.storage.sync`.
+- ChatGPT's DOM is private and may change over time.
+- Sending prefers ChatGPT's real send button; if the button can no longer be found, the extension fails quietly instead of forcing unrelated form submissions.
+- Shortcut options are intentionally limited to a small set of practical `Enter` combinations.
 
-### ChatGPT DOM integration notes
+---
 
-The integration intentionally avoids brittle class names.
+## Manual Test Checklist
 
-- The content script only acts when the key event originates from an editable field that appears to belong to the chat composer.
-- It looks for a nearby `form` and a send button using stable-ish signals such as `data-testid="send-button"` or accessible labels containing `Send`.
-- If no composer or send button can be identified, the script does nothing instead of forcing a fallback that might affect unrelated forms.
-
-That means the extension should fail quietly if ChatGPT significantly changes its DOM, rather than break other inputs on the page.
-
-### IME handling
-
-The extension explicitly avoids remapping `Enter` while IME composition is active.
-
-- It checks `event.isComposing`
-- It tracks `compositionstart` and `compositionend` to avoid sending messages while composing Chinese, Japanese, or Korean text
-
-## Known limitations
-
-- ChatGPT's internal DOM is private and can change at any time.
-- The send action prefers clicking ChatGPT's real send button; if that button cannot be found, the extension intentionally does nothing.
-- Shortcut options are intentionally limited to a small, practical set instead of allowing arbitrary key combinations.
-
-## Manual testing checklist
-
-1. Load the unpacked extension in Chrome.
-2. Open `https://chatgpt.com/` or `https://chat.openai.com/`.
-3. Verify the default behavior:
+1. Load the extension as unpacked.
+2. Open ChatGPT.
+3. Confirm the default behavior:
    - `Enter` inserts a newline
    - `Ctrl+Enter` sends on Windows/Linux
    - `Command+Enter` sends on macOS
-4. Click the extension icon and confirm the popup opens with the current settings.
-5. Change the send shortcut, return to ChatGPT, and verify the new shortcut works without reloading the page.
-6. Change the newline shortcut, return to ChatGPT, and verify the new shortcut works immediately.
-7. Try setting both actions to the same shortcut and verify the popup blocks the invalid configuration.
-8. Disable the extension in the popup and confirm ChatGPT returns to its native keyboard behavior.
-9. Start a new chat and verify the remap still works after ChatGPT rerenders the composer.
-10. If you use a Chinese, Japanese, or Korean IME, verify that pressing `Enter` during composition does not send the message.
+4. Open the popup and change the shortcuts.
+5. Verify the new shortcut mapping works immediately.
+6. Disable the extension and confirm ChatGPT returns to its native behavior.
+7. Start a new conversation and confirm the remap still works.
+8. If you use a CJK IME, verify that pressing `Enter` during composition does not send the message.
+
+---
+
+## License
+
+This project is open-sourced under the [MIT License](LICENSE).

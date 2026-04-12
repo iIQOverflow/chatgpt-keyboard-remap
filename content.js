@@ -27,6 +27,7 @@
     settings: shared.getDefaultSettings(),
     isComposing: false,
     isReplayingNewline: false,
+    activeComposer: null,
   };
 
   initialize();
@@ -35,6 +36,8 @@
     shared.subscribeToSettings((nextSettings) => {
       state.settings = nextSettings;
     });
+    document.addEventListener("focusin", handleFocusIn, true);
+    document.addEventListener("focusout", handleFocusOut, true);
     document.addEventListener("compositionstart", handleCompositionStart, true);
     document.addEventListener("compositionend", handleCompositionEnd, true);
     window.addEventListener("keydown", handleKeydown, true);
@@ -49,14 +52,37 @@
     );
   }
 
+  function handleFocusIn(event) {
+    state.activeComposer = getComposerEditable(event.target);
+  }
+
+  function handleFocusOut(event) {
+    if (!state.activeComposer) {
+      return;
+    }
+
+    const nextTarget = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+    if (nextTarget && state.activeComposer.contains(nextTarget)) {
+      return;
+    }
+
+    queueMicrotask(() => {
+      if (document.activeElement instanceof Node && state.activeComposer?.contains(document.activeElement)) {
+        return;
+      }
+
+      state.activeComposer = null;
+    });
+  }
+
   function handleCompositionStart(event) {
-    if (getComposerEditable(event.target)) {
+    if (resolveComposer(event.target)) {
       state.isComposing = true;
     }
   }
 
   function handleCompositionEnd(event) {
-    if (!getComposerEditable(event.target)) {
+    if (!resolveComposer(event.target)) {
       return;
     }
 
@@ -79,7 +105,7 @@
       return;
     }
 
-    const editable = getComposerEditable(event.target);
+    const editable = resolveComposer(event.target);
     if (!editable) {
       return;
     }
@@ -104,6 +130,19 @@
   function interceptKeyEvent(event) {
     event.preventDefault();
     event.stopImmediatePropagation();
+  }
+
+  function resolveComposer(target) {
+    if (state.activeComposer && state.activeComposer.isConnected) {
+      const node = target instanceof Node ? target : null;
+      if (node && state.activeComposer.contains(node)) {
+        return state.activeComposer;
+      }
+    }
+
+    const editable = getComposerEditable(target);
+    state.activeComposer = editable;
+    return editable;
   }
 
   function getComposerEditable(target) {
@@ -182,22 +221,32 @@
   }
 
   function findSendButton(editable) {
-    const roots = [editable.closest("form"), editable.closest("main")].filter(
-      (root, index, items) => root instanceof HTMLElement && items.indexOf(root) === index
-    );
+    const roots = [];
+    const form = editable.closest("form");
+    const main = editable.closest("main");
+
+    if (form instanceof HTMLElement) {
+      roots.push(form);
+    }
+
+    if (main instanceof HTMLElement && main !== form) {
+      roots.push(main);
+    }
 
     for (const root of roots) {
-      const directMatch = Array.from(root.querySelectorAll(SEND_BUTTON_SELECTOR)).find(isUsableButton);
-      if (directMatch) {
-        return directMatch;
+      for (const candidate of root.querySelectorAll(SEND_BUTTON_SELECTOR)) {
+        if (isUsableButton(candidate)) {
+          return candidate;
+        }
       }
 
-      const iconMatch = Array.from(root.querySelectorAll("button")).find(
-        (button) =>
-          isUsableButton(button) && button.querySelector('svg path[d^="M15.192 8.906"]')
-      );
-      if (iconMatch) {
-        return iconMatch;
+      for (const button of root.querySelectorAll("button")) {
+        if (
+          isUsableButton(button) &&
+          button.querySelector('svg path[d^="M15.192 8.906"]')
+        ) {
+          return button;
+        }
       }
     }
 
