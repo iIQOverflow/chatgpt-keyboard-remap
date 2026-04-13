@@ -2,26 +2,29 @@
   const STORAGE_KEY = "settings";
   const MAC_PLATFORM = "mac";
   const OTHER_PLATFORM = "other";
+  const SHORTCUT_KEY = "Enter";
+  const MODIFIER_FIELDS = ["ctrlKey", "metaKey", "altKey", "shiftKey"];
 
-  const SHORTCUTS = Object.freeze({
-    ENTER: "enter",
-    SHIFT_ENTER: "shiftEnter",
-    CTRL_ENTER: "ctrlEnter",
-    META_ENTER: "metaEnter",
+  const LEGACY_SHORTCUTS = Object.freeze({
+    enter: { key: SHORTCUT_KEY },
+    shiftEnter: { key: SHORTCUT_KEY, shiftKey: true },
+    ctrlEnter: { key: SHORTCUT_KEY, ctrlKey: true },
+    metaEnter: { key: SHORTCUT_KEY, metaKey: true },
   });
 
-  const SHORTCUT_OPTIONS = Object.freeze({
-    [MAC_PLATFORM]: Object.freeze([
-      { value: SHORTCUTS.ENTER, label: "Enter" },
-      { value: SHORTCUTS.SHIFT_ENTER, label: "Shift+Enter" },
-      { value: SHORTCUTS.META_ENTER, label: "Command+Enter" },
-      { value: SHORTCUTS.CTRL_ENTER, label: "Control+Enter" },
-    ]),
-    [OTHER_PLATFORM]: Object.freeze([
-      { value: SHORTCUTS.ENTER, label: "Enter" },
-      { value: SHORTCUTS.SHIFT_ENTER, label: "Shift+Enter" },
-      { value: SHORTCUTS.CTRL_ENTER, label: "Ctrl+Enter" },
-    ]),
+  const DISPLAY_ORDER = Object.freeze({
+    [MAC_PLATFORM]: [
+      ["ctrlKey", "Control"],
+      ["altKey", "Option"],
+      ["shiftKey", "Shift"],
+      ["metaKey", "Command"],
+    ],
+    [OTHER_PLATFORM]: [
+      ["ctrlKey", "Ctrl"],
+      ["altKey", "Alt"],
+      ["shiftKey", "Shift"],
+      ["metaKey", "Meta"],
+    ],
   });
 
   function getPlatform() {
@@ -37,8 +40,46 @@
     return platform || getPlatform();
   }
 
-  function getShortcutOptions(platform) {
-    return SHORTCUT_OPTIONS[resolvePlatform(platform)];
+  function createShortcut(rawShortcut) {
+    return {
+      key: SHORTCUT_KEY,
+      ctrlKey: !!(rawShortcut && rawShortcut.ctrlKey),
+      metaKey: !!(rawShortcut && rawShortcut.metaKey),
+      altKey: !!(rawShortcut && rawShortcut.altKey),
+      shiftKey: !!(rawShortcut && rawShortcut.shiftKey),
+    };
+  }
+
+  function migrateLegacyShortcut(rawShortcut) {
+    return typeof rawShortcut === "string" && LEGACY_SHORTCUTS[rawShortcut]
+      ? LEGACY_SHORTCUTS[rawShortcut]
+      : rawShortcut;
+  }
+
+  function normalizeShortcut(rawShortcut, fallbackShortcut) {
+    const fallback = fallbackShortcut == null ? null : createShortcut(fallbackShortcut);
+    const candidate = migrateLegacyShortcut(rawShortcut);
+
+    if (!candidate || typeof candidate !== "object") {
+      return fallback;
+    }
+
+    if ((candidate.key && candidate.key !== SHORTCUT_KEY) || (candidate.code && candidate.code !== SHORTCUT_KEY)) {
+      return fallback;
+    }
+
+    return createShortcut(candidate);
+  }
+
+  function serializeShortcut(shortcut) {
+    const normalized = normalizeShortcut(shortcut, createShortcut());
+    return [
+      normalized.key,
+      normalized.ctrlKey ? 1 : 0,
+      normalized.metaKey ? 1 : 0,
+      normalized.altKey ? 1 : 0,
+      normalized.shiftKey ? 1 : 0,
+    ].join(":");
   }
 
   function getDefaultSettings(platform) {
@@ -46,28 +87,25 @@
 
     return {
       enabled: true,
-      sendShortcut:
-        resolvedPlatform === MAC_PLATFORM ? SHORTCUTS.META_ENTER : SHORTCUTS.CTRL_ENTER,
-      newlineShortcut: SHORTCUTS.ENTER,
+      sendShortcut: createShortcut(
+        resolvedPlatform === MAC_PLATFORM ? { metaKey: true } : { ctrlKey: true }
+      ),
+      newlineShortcut: createShortcut(),
     };
   }
 
   function normalizeSettings(rawSettings, platform) {
     const defaults = getDefaultSettings(platform);
-    const allowedValues = new Set(getShortcutOptions(platform).map((option) => option.value));
     const normalized = {
       enabled:
         rawSettings && typeof rawSettings.enabled === "boolean"
           ? rawSettings.enabled
           : defaults.enabled,
-      sendShortcut:
-        rawSettings && allowedValues.has(rawSettings.sendShortcut)
-          ? rawSettings.sendShortcut
-          : defaults.sendShortcut,
-      newlineShortcut:
-        rawSettings && allowedValues.has(rawSettings.newlineShortcut)
-          ? rawSettings.newlineShortcut
-          : defaults.newlineShortcut,
+      sendShortcut: normalizeShortcut(rawSettings && rawSettings.sendShortcut, defaults.sendShortcut),
+      newlineShortcut: normalizeShortcut(
+        rawSettings && rawSettings.newlineShortcut,
+        defaults.newlineShortcut
+      ),
     };
 
     if (hasShortcutConflict(normalized)) {
@@ -78,32 +116,35 @@
   }
 
   function hasShortcutConflict(settings) {
-    return !!settings && settings.sendShortcut === settings.newlineShortcut;
+    return (
+      !!settings &&
+      serializeShortcut(settings.sendShortcut) === serializeShortcut(settings.newlineShortcut)
+    );
   }
 
   function matchesShortcut(event, shortcut) {
-    if (!event || event.key !== "Enter" || event.altKey) {
+    const normalized = normalizeShortcut(shortcut, null);
+    if (!event || !normalized || event.key !== SHORTCUT_KEY) {
       return false;
     }
 
-    switch (shortcut) {
-      case SHORTCUTS.ENTER:
-        return !event.shiftKey && !event.ctrlKey && !event.metaKey;
-      case SHORTCUTS.SHIFT_ENTER:
-        return event.shiftKey && !event.ctrlKey && !event.metaKey;
-      case SHORTCUTS.CTRL_ENTER:
-        return event.ctrlKey && !event.shiftKey && !event.metaKey;
-      case SHORTCUTS.META_ENTER:
-        return event.metaKey && !event.shiftKey && !event.ctrlKey;
-      default:
-        return false;
+    return MODIFIER_FIELDS.every((field) => !!event[field] === normalized[field]);
+  }
+
+  function buildShortcutFromKeyboardEvent(event) {
+    if (!event || event.key !== SHORTCUT_KEY) {
+      return null;
     }
+
+    return createShortcut(event);
   }
 
   function formatShortcut(shortcut, platform) {
-    const resolvedPlatform = resolvePlatform(platform);
-    const option = getShortcutOptions(resolvedPlatform).find((item) => item.value === shortcut);
-    return option ? option.label : "Enter";
+    const normalized = normalizeShortcut(shortcut, createShortcut());
+    const labels = DISPLAY_ORDER[resolvePlatform(platform)];
+    const parts = labels.filter(([field]) => normalized[field]).map(([, label]) => label);
+    parts.push("Enter");
+    return parts.join("+");
   }
 
   function describeBehavior(settings, platform) {
@@ -122,7 +163,7 @@
     const result = await chrome.storage.sync.get(STORAGE_KEY);
     const settings = normalizeSettings(result[STORAGE_KEY], resolvedPlatform);
 
-    if (!(STORAGE_KEY in result)) {
+    if (!(STORAGE_KEY in result) || JSON.stringify(result[STORAGE_KEY]) !== JSON.stringify(settings)) {
       await saveStoredSettings(settings, resolvedPlatform);
     }
 
@@ -153,13 +194,14 @@
 
   globalThis.ChatGptKeyboardRemapShared = {
     STORAGE_KEY,
-    SHORTCUTS,
     getPlatform,
-    getShortcutOptions,
+    createShortcut,
+    normalizeShortcut,
     getDefaultSettings,
     normalizeSettings,
     hasShortcutConflict,
     matchesShortcut,
+    buildShortcutFromKeyboardEvent,
     formatShortcut,
     describeBehavior,
     loadStoredSettings,

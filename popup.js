@@ -8,13 +8,21 @@
   const state = {
     platform: shared.getPlatform(),
     settings: shared.getDefaultSettings(),
+    recordingField: null,
+    messages: {
+      sendShortcut: "",
+      newlineShortcut: "",
+    },
   };
 
   const elements = {
     popup: null,
     enabledToggle: null,
-    sendShortcuts: null,
-    newlineShortcuts: null,
+    sendShortcutValue: null,
+    newlineShortcutValue: null,
+    sendShortcutHelp: null,
+    newlineShortcutHelp: null,
+    recordButtons: [],
   };
 
   document.addEventListener("DOMContentLoaded", initialize);
@@ -22,95 +30,169 @@
   async function initialize() {
     elements.popup = document.querySelector(".popup");
     elements.enabledToggle = document.getElementById("enabled-toggle");
-    elements.sendShortcuts = document.getElementById("send-shortcuts");
-    elements.newlineShortcuts = document.getElementById("newline-shortcuts");
+    elements.sendShortcutValue = document.getElementById("send-shortcut-value");
+    elements.newlineShortcutValue = document.getElementById("newline-shortcut-value");
+    elements.sendShortcutHelp = document.getElementById("send-shortcut-help");
+    elements.newlineShortcutHelp = document.getElementById("newline-shortcut-help");
+    elements.recordButtons = Array.from(document.querySelectorAll(".record-button"));
 
     elements.enabledToggle.addEventListener("change", handleToggleChange);
-    elements.sendShortcuts.addEventListener("click", handleShortcutSelection);
-    elements.newlineShortcuts.addEventListener("click", handleShortcutSelection);
+    document.addEventListener("click", handleRecordButtonClick);
+    window.addEventListener("keydown", handleRecordingKeydown, true);
 
-    renderShortcutGroup(elements.sendShortcuts, "sendShortcut");
-    renderShortcutGroup(elements.newlineShortcuts, "newlineShortcut");
     syncUi();
 
     try {
       state.settings = await shared.loadStoredSettings(state.platform);
       syncUi();
-    } catch (error) {}
-  }
-
-  function renderShortcutGroup(container, fieldName) {
-    const options = shared.getShortcutOptions(state.platform);
-    const buttons = options.map((option) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "shortcut-button";
-      button.dataset.field = fieldName;
-      button.dataset.value = option.value;
-      button.setAttribute("role", "radio");
-      button.textContent = option.label;
-      return button;
-    });
-
-    container.replaceChildren(...buttons);
+    } catch (error) {
+      setMessage("sendShortcut", "");
+      setMessage("newlineShortcut", "");
+    }
   }
 
   async function handleToggleChange() {
-    await updateSettings({
+    await persistSettings({
       ...state.settings,
       enabled: elements.enabledToggle.checked,
     });
   }
 
-  async function handleShortcutSelection(event) {
-    const button = event.target instanceof Element ? event.target.closest(".shortcut-button") : null;
+  function handleRecordButtonClick(event) {
+    const button = event.target instanceof Element ? event.target.closest(".record-button") : null;
     if (!(button instanceof HTMLButtonElement)) {
       return;
     }
 
     const fieldName = button.dataset.field;
-    const value = button.dataset.value;
+    if (!fieldName) {
+      return;
+    }
 
-    await updateSettings({
-      ...state.settings,
-      [fieldName]: value,
-    });
+    if (state.recordingField === fieldName) {
+      stopRecording();
+      return;
+    }
+
+    startRecording(fieldName);
   }
 
-  async function updateSettings(nextSettings) {
-    if (shared.hasShortcutConflict(nextSettings)) {
-      setStatus("Send and newline shortcuts must be different.", "error");
+  async function handleRecordingKeydown(event) {
+    if (!state.recordingField) {
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      stopRecording();
+      return;
+    }
+
+    if (isModifierKey(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const shortcut = shared.buildShortcutFromKeyboardEvent(event);
+    if (!shortcut) {
+      setMessage(
+        state.recordingField,
+        "Press Enter with optional modifiers. Press Esc to cancel."
+      );
       syncUi();
       return;
     }
 
+    const nextSettings = {
+      ...state.settings,
+      [state.recordingField]: shortcut,
+    };
+
+    if (shared.hasShortcutConflict(nextSettings)) {
+      setMessage(state.recordingField, "That shortcut is already used by the other action.");
+      syncUi();
+      return;
+    }
+
+    const fieldName = state.recordingField;
+    await persistSettings(nextSettings);
+    stopRecording();
+    setMessage(fieldName, "");
+    syncUi();
+  }
+
+  function isModifierKey(key) {
+    return key === "Shift" || key === "Control" || key === "Alt" || key === "Meta";
+  }
+
+  function startRecording(fieldName) {
+    state.recordingField = fieldName;
+    clearMessages();
+    setMessage(fieldName, "Press Enter with optional modifiers. Press Esc to cancel.");
+    syncUi();
+  }
+
+  function stopRecording() {
+    state.recordingField = null;
+    clearMessages();
+    syncUi();
+  }
+
+  async function persistSettings(nextSettings) {
     try {
       state.settings = await shared.saveStoredSettings(nextSettings, state.platform);
-      syncUi();
-    } catch (error) {
-      syncUi();
-    }
+    } catch (error) {}
+  }
+
+  function clearMessages() {
+    setMessage("sendShortcut", "");
+    setMessage("newlineShortcut", "");
+  }
+
+  function setMessage(fieldName, message) {
+    state.messages[fieldName] = message;
   }
 
   function syncUi() {
     elements.enabledToggle.checked = state.settings.enabled;
-    syncShortcutGroup(elements.sendShortcuts, "sendShortcut");
-    syncShortcutGroup(elements.newlineShortcuts, "newlineShortcut");
     elements.popup.classList.toggle("is-disabled", !state.settings.enabled);
-  }
+    elements.sendShortcutValue.textContent = shared.formatShortcut(
+      state.settings.sendShortcut,
+      state.platform
+    );
+    elements.newlineShortcutValue.textContent = shared.formatShortcut(
+      state.settings.newlineShortcut,
+      state.platform
+    );
 
-  function syncShortcutGroup(container, fieldName) {
-    const selectedValue = state.settings[fieldName];
-    const buttons = container.querySelectorAll(".shortcut-button");
-
-    for (const button of buttons) {
+    for (const button of elements.recordButtons) {
       if (!(button instanceof HTMLButtonElement)) {
         continue;
       }
 
-      const isSelected = button.dataset.value === selectedValue;
-      button.classList.toggle("is-selected", isSelected);
-      button.setAttribute("aria-checked", String(isSelected));
+      const fieldName = button.dataset.field;
+      const isRecording = fieldName === state.recordingField;
+      button.classList.toggle("is-recording", isRecording);
+      const value = button.querySelector(".record-button__value");
+      if (value instanceof HTMLElement && isRecording) {
+        value.textContent = "Press shortcut...";
+      }
     }
+
+    syncHelpText(elements.sendShortcutHelp, state.messages.sendShortcut);
+    syncHelpText(elements.newlineShortcutHelp, state.messages.newlineShortcut);
+  }
+
+  function syncHelpText(element, message) {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+
+    const hasMessage = !!message;
+    element.hidden = false;
+    element.textContent = hasMessage ? message : "Click the shortcut box to set a new shortcut.";
+    element.classList.toggle("is-error", hasMessage && /already used/i.test(message));
   }
 })();

@@ -11,10 +11,7 @@
   <body>
     <main class="popup">
       <section class="hero">
-        <div class="hero__copy">
-          <p class="hero__eyebrow">ChatGPT</p>
-          <h1>Keyboard Remap</h1>
-        </div>
+        <h1>ChatGPT Keyboard Remap</h1>
 
         <label class="toggle toggle--compact" for="enabled-toggle" aria-label="Enable extension">
           <span class="toggle__text">On</span>
@@ -29,31 +26,35 @@
 
       <section class="panel panel--settings">
         <div class="setting">
-          <div class="setting__header">
-            <div>
-              <h2 class="setting__title">Send message</h2>
-            </div>
+          <div class="setting__row">
+            <h2 class="setting__title">Send message</h2>
+            <button
+              class="record-button"
+              id="record-send-shortcut"
+              type="button"
+              data-field="sendShortcut"
+              aria-describedby="send-shortcut-help"
+            >
+              <span class="record-button__value" id="send-shortcut-value"></span>
+            </button>
           </div>
-          <div
-            class="shortcut-grid"
-            id="send-shortcuts"
-            role="radiogroup"
-            aria-label="Shortcut used to send a message"
-          ></div>
+          <p class="shortcut-help" id="send-shortcut-help"></p>
         </div>
 
         <div class="setting">
-          <div class="setting__header">
-            <div>
-              <h2 class="setting__title">Insert newline</h2>
-            </div>
+          <div class="setting__row">
+            <h2 class="setting__title">Insert newline</h2>
+            <button
+              class="record-button"
+              id="record-newline-shortcut"
+              type="button"
+              data-field="newlineShortcut"
+              aria-describedby="newline-shortcut-help"
+            >
+              <span class="record-button__value" id="newline-shortcut-value"></span>
+            </button>
           </div>
-          <div
-            class="shortcut-grid"
-            id="newline-shortcuts"
-            role="radiogroup"
-            aria-label="Shortcut used to insert a newline"
-          ></div>
+          <p class="shortcut-help" id="newline-shortcut-help"></p>
         </div>
       </section>
 
